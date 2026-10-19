@@ -42,7 +42,7 @@ pipeline {
                         -w /workspace \
                         python:3.12-slim \
                         sh -c 'pip install --no-cache-dir -r requirements-dev.txt && ruff check --no-cache app.py tests && ruff format --check --no-cache app.py tests'
-                '''.stripIndent().trim()
+                '''
             }
         }
 
@@ -56,7 +56,7 @@ pipeline {
                         -w /workspace \
                         python:3.12-slim \
                         sh -c 'pip install --no-cache-dir -r requirements-dev.txt && python -m pytest tests -v -p no:cacheprovider --junitxml=/reports/junit.xml'
-                '''.stripIndent().trim()
+                '''
             }
             post {
                 always {
@@ -90,14 +90,13 @@ pipeline {
                         "$TRIVY_IMAGE" image --image-src docker --scanners vuln \
                         --severity HIGH,CRITICAL --ignore-unfixed \
                         --exit-code 1 "$IMAGE:$IMAGE_TAG"
-                '''.stripIndent().trim()
+                '''
             }
         }
 
         stage('Push to ECR') {
             steps {
-                sh '''
-                    #!/bin/bash
+                sh '''#!/bin/bash
                     set -euo pipefail
                     set +x
                     export DOCKER_CONFIG="$(mktemp -d)"
@@ -105,7 +104,7 @@ pipeline {
                     aws ecr get-login-password --region "$AWS_REGION" |
                         docker login --username AWS --password-stdin "$ECR_REGISTRY"
                     docker push "$IMAGE:$IMAGE_TAG"
-                '''.stripIndent().trim()
+                '''
             }
         }
     }
