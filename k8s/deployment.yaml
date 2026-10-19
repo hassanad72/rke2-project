@@ -16,8 +16,8 @@ spec:
       serviceAccountName: web-sa
       containers:
         - name: web
-          
-          image: 505342848876.dkr.ecr.us-east-1.amazonaws.com/devops-project-repo:IMAGE_TAG
+
+          image: 505342848876.dkr.ecr.us-east-1.amazonaws.com/devops-project-repo:d41e5767495613fa960e4d1ff4aa839e39fcdb94
           ports:
             - name: http
               containerPort: 5000
