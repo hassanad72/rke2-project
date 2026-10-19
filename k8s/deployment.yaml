@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-web
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rke2-project
+  template:
+    metadata:
+      labels:
+        app: rke2-project
+    spec:
+      serviceAccountName: web-sa
+      containers:
+        - name: web
+          
+          image: 505342848876.dkr.ecr.us-east-1.amazonaws.com/devops-project-repo:IMAGE_TAG
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: APP_NAME
+              value: rke2-project
+            - name: APP_VERSION
+              value: "1.0.0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15

@@ -1,0 +1,33 @@
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git metadata
+.git/
+.gitignore
+
+# Local environment settings and private keys
+.env
+.env.*
+*.pem
+*.key
+
+# CI, tests, and Kubernetes manifests
+Jenkinsfile
+tests/
+k8s/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Build instructions are not application files
+Dockerfile
+.dockerignore

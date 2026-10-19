@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-web
+  namespace: dev
+spec:
+  ingressClassName: traefik
+  rules:
+    # Replace with your hostname and configure DNS before browser access.
+    - host: rke2.example.test
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service-web
+                port:
+                  number: 80
