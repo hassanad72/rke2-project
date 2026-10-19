@@ -1,4 +1,3 @@
-// CI only. The selected Jenkins node needs Git, Docker, Bash and AWS CLI.
 pipeline {
     agent any
     options {
@@ -15,6 +14,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    env.IMAGE_TAG = sh(
+                        script: 'git rev-parse HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
             }
         }
 
@@ -33,7 +38,7 @@ pipeline {
 
         stage('Build image') {
             steps {
-                sh 'docker build -t "$IMAGE:$GIT_COMMIT" .'
+                sh 'docker build -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
             }
         }
 
@@ -47,7 +52,7 @@ pipeline {
                     trap 'rm -rf "$DOCKER_CONFIG"' EXIT
                     aws ecr get-login-password --region "$AWS_REGION" |
                         docker login --username AWS --password-stdin "$ECR_REGISTRY"
-                    docker push "$IMAGE:$GIT_COMMIT"
+                    docker push "$IMAGE:$IMAGE_TAG"
                 '''.stripIndent().trim()
             }
         }
