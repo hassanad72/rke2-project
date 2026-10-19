@@ -7,3 +7,6 @@ __pycache__/
 .env.*
 *.pem
 *.key
+reports/
+.ruff_cache/
+.trivy-cache/

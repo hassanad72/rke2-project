@@ -31,3 +31,7 @@ k8s/
 # Build instructions are not application files
 Dockerfile
 .dockerignore
+reports/
+.ruff_cache/
+.trivy-cache/
+requirements-dev.txt

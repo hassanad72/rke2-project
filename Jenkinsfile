@@ -2,6 +2,10 @@ pipeline {
     agent any
     options {
         skipDefaultCheckout()
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
     }
 
     triggers {
@@ -9,6 +13,7 @@ pipeline {
     }
 
     environment {
+        TRIVY_IMAGE = 'aquasec/trivy:0.76.0'
         AWS_REGION = 'us-east-1'
         ECR_REGISTRY = '505342848876.dkr.ecr.us-east-1.amazonaws.com'
         IMAGE = "${ECR_REGISTRY}/devops-project-repo"
@@ -18,6 +23,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                sh 'mkdir -p reports .trivy-cache; rm -f reports/junit.xml reports/trivy.json'
                 script {
                     env.IMAGE_TAG = sh(
                         script: 'git rev-parse HEAD',
@@ -27,7 +33,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Lint') {
             steps {
                 sh '''
                     docker run --rm \
@@ -35,14 +41,56 @@ pipeline {
                         -v "$WORKSPACE:/workspace:ro" \
                         -w /workspace \
                         python:3.12-slim \
-                        sh -c 'pip install --no-cache-dir -r requirements.txt && python -m unittest discover -s tests -v'
+                        sh -c 'pip install --no-cache-dir -r requirements-dev.txt && ruff check --no-cache app.py tests && ruff format --check --no-cache app.py tests'
                 '''.stripIndent().trim()
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    docker run --rm \
+                        -e PYTHONDONTWRITEBYTECODE=1 \
+                        -v "$WORKSPACE:/workspace:ro" \
+                        -v "$WORKSPACE/reports:/reports" \
+                        -w /workspace \
+                        python:3.12-slim \
+                        sh -c 'pip install --no-cache-dir -r requirements-dev.txt && python -m pytest tests -v -p no:cacheprovider --junitxml=/reports/junit.xml'
+                '''.stripIndent().trim()
+            }
+            post {
+                always {
+                    junit testResults: 'reports/junit.xml'
+                }
             }
         }
 
         stage('Build image') {
             steps {
-                sh 'docker build -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
+                sh 'docker build --pull -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
+            }
+        }
+
+        stage('Scan image') {
+            steps {
+                sh '''
+                    # Save all known vulnerability findings as a Jenkins artifact.
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v "$WORKSPACE/.trivy-cache:/root/.cache/trivy" \
+                        -v "$WORKSPACE/reports:/reports" \
+                        "$TRIVY_IMAGE" image --image-src docker --scanners vuln \
+                        --format json --output /reports/trivy.json \
+                        --exit-code 0 "$IMAGE:$IMAGE_TAG"
+
+                    # Block publication when High/Critical findings have fixes available.
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v "$WORKSPACE/.trivy-cache:/root/.cache/trivy" \
+                        "$TRIVY_IMAGE" image --image-src docker --scanners vuln \
+                        --severity HIGH,CRITICAL --ignore-unfixed \
+                        --exit-code 1 "$IMAGE:$IMAGE_TAG"
+                '''.stripIndent().trim()
             }
         }
 
@@ -59,6 +107,12 @@ pipeline {
                     docker push "$IMAGE:$IMAGE_TAG"
                 '''.stripIndent().trim()
             }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/*.xml,reports/*.json', allowEmptyArchive: true
         }
     }
 }
