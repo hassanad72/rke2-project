@@ -18,6 +18,19 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                sh '''
+                    docker run --rm \
+                        -e PYTHONDONTWRITEBYTECODE=1 \
+                        -v "$WORKSPACE:/workspace:ro" \
+                        -w /workspace \
+                        python:3.12-slim \
+                        sh -c 'pip install --no-cache-dir -r requirements.txt && python -m unittest discover -s tests -v'
+                '''.stripIndent().trim()
+            }
+        }
+
         stage('Build image') {
             steps {
                 sh 'docker build -t "$IMAGE:$GIT_COMMIT" .'
