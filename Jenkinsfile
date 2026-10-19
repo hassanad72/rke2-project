@@ -4,6 +4,10 @@ pipeline {
         skipDefaultCheckout()
     }
 
+    triggers {
+        githubPush()
+    }
+
     environment {
         AWS_REGION = 'us-east-1'
         ECR_REGISTRY = '505342848876.dkr.ecr.us-east-1.amazonaws.com'
