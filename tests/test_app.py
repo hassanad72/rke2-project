@@ -14,16 +14,21 @@ class AppTests(unittest.TestCase):
 
     def test_home_returns_application_details(self):
         response = self.client.get("/")
+
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.is_json)
+
+        data = response.get_json()
+
         self.assertEqual(
-            response.get_json(),
-            {
-                "application": os.getenv("APP_NAME", "rke2-project"),
-                "version": os.getenv("APP_VERSION", "1.0.0"),
-                "hostname": socket.gethostname(),
-            },
+            data["application"],
+            os.getenv("APP_NAME", "rke2-project"),
         )
+        self.assertEqual(
+            data["version"],
+            os.getenv("APP_VERSION", "1.0.0"),
+        )
+        self.assertEqual(data["hostname"], socket.gethostname())
 
     def test_health_returns_healthy(self):
         response = self.client.get("/health")

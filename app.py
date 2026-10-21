@@ -10,7 +10,6 @@ APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 HOSTNAME = socket.gethostname()
 
 
-
 @app.get("/")
 def home():
     return jsonify(
