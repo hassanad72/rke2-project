@@ -16,8 +16,7 @@ def home():
         application=APP_NAME,
         version=APP_VERSION,
         hostname=HOSTNAME,
-        message="Deployed through Jenkins and Argo CD!",
-        message="Hello World!"
+        message="Hello World!",
     )
 
 
