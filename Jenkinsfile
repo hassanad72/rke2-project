@@ -22,18 +22,53 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                sh 'mkdir -p reports .trivy-cache; rm -f reports/junit.xml reports/trivy.json'
                 script {
+                    def gitInfo = checkout scm
+                    env.CI_BASE_COMMIT = gitInfo.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: ''
                     env.IMAGE_TAG = sh(
                         script: 'git rev-parse HEAD',
                         returnStdout: true
                     ).trim()
                 }
+                sh 'mkdir -p reports .trivy-cache; rm -f reports/junit.xml reports/trivy.json'
+            }
+        }
+
+        stage('Check changes') {
+            steps {
+                script {
+                    env.RUN_CI = sh(
+                        script: '''
+                            # First builds, missing history and manual reruns run full CI.
+                            if [ -z "$CI_BASE_COMMIT" ] ||
+                               ! git cat-file -e "$CI_BASE_COMMIT^{commit}" 2>/dev/null ||
+                               [ "$CI_BASE_COMMIT" = "$IMAGE_TAG" ]; then
+                                echo true
+                            elif git diff --quiet "$CI_BASE_COMMIT" "$IMAGE_TAG" -- . ':(exclude)k8s/**'; then
+                                echo false
+                            else
+                                diff_status=$?
+                                if [ "$diff_status" -ne 1 ]; then
+                                    exit "$diff_status"
+                                fi
+                                echo true
+                            fi
+                        ''',
+                        returnStdout: true
+                    ).trim()
+                    if (env.RUN_CI == 'true') {
+                        echo 'Application or CI changes detected: running CI.'
+                    } else {
+                        echo 'Only Kubernetes manifests changed: skipping CI stages.'
+                    }
+                }
             }
         }
 
         stage('Lint') {
+            when {
+                environment name: 'RUN_CI', value: 'true'
+            }
             steps {
                 sh '''
                     docker run --rm \
@@ -47,6 +82,9 @@ pipeline {
         }
 
         stage('Test') {
+            when {
+                environment name: 'RUN_CI', value: 'true'
+            }
             steps {
                 sh '''
                     docker run --rm \
@@ -66,12 +104,18 @@ pipeline {
         }
 
         stage('Build image') {
+            when {
+                environment name: 'RUN_CI', value: 'true'
+            }
             steps {
                 sh 'docker build --pull --build-arg APP_VERSION="$IMAGE_TAG" -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
             }
         }
 
         stage('Scan image') {
+            when {
+                environment name: 'RUN_CI', value: 'true'
+            }
             steps {
                 sh '''
                     # Save all known vulnerability findings as a Jenkins artifact.
@@ -95,6 +139,9 @@ pipeline {
         }
 
         stage('Push to ECR') {
+            when {
+                environment name: 'RUN_CI', value: 'true'
+            }
             steps {
                 sh '''#!/bin/bash
                     set -euo pipefail
