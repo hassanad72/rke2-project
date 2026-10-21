@@ -10,12 +10,14 @@ APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 HOSTNAME = socket.gethostname()
 
 
+
 @app.get("/")
 def home():
     return jsonify(
         application=APP_NAME,
         version=APP_VERSION,
         hostname=HOSTNAME,
+        message="Deployed through Jenkins and Argo CD!",
     )
 
 
