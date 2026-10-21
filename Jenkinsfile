@@ -67,7 +67,7 @@ pipeline {
 
         stage('Build image') {
             steps {
-                sh 'docker build --pull -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
+                sh 'docker build --pull --build-arg APP_VERSION="$IMAGE_TAG" -t "$IMAGE:${IMAGE_TAG:?Missing image tag}" .'
             }
         }
 

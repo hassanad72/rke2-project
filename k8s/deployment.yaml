@@ -24,8 +24,6 @@ spec:
           env:
             - name: APP_NAME
               value: rke2-project
-            - name: APP_VERSION
-              value: "1.0.0"
           resources:
             requests:
               cpu: 100m
