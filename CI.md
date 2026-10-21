@@ -1,6 +1,6 @@
 # Jenkins CI walkthrough
 
-Flow: Checkout -> Check changes -> Lint -> Test -> Build image -> Scan image -> Push to ECR.
+Flow: Checkout -> Lint -> Test -> Build image -> Scan image -> Push to ECR.
 
 The selected Jenkins node needs Git, Bash, Docker, AWS CLI and its ECR push IAM role.
 Ruff, pytest and Trivy run in temporary containers; they do not need host installation.
@@ -40,16 +40,3 @@ References:
 - https://www.jenkins.io/doc/book/pipeline/syntax/
 - https://docs.astral.sh/ruff/linter/
 - https://trivy.dev/docs/latest/references/configuration/cli/trivy_image/
-
-## Manifest-only changes and loop prevention
-
-Check changes compares the checked-out commit with the previous successful Jenkins commit.
-If every changed file is under k8s/, Lint, Test, Build image, Scan image and Push to ECR
-are skipped. A webhook can still start a successful run that only checks out and compares Git.
-Changes outside k8s/, including application code, tests, requirements, Dockerfile and Jenkinsfile,
-run CI normally. Mixed app/manifest commits also run CI. First builds, missing baseline history,
-and manual reruns of the same successful commit run full CI.
-Comparing against the last successful commit includes changes from failed or batched builds;
-it does not inspect only the most recent commit. Git diff errors fail the run instead of skipping it.
-A future manifest-update stage must use the same RUN_CI condition. That update stage has
-not been added yet. This guard alone does not change deployment image tags or deploy anything.
