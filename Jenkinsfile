@@ -13,7 +13,6 @@ pipeline {
     }
 
     environment {
-        GITOPS_REPO = 'git@github.com:hassanad72/rke2-project-gitops.git'
         TRIVY_IMAGE = 'aquasec/trivy:0.76.0'
         AWS_REGION = 'us-east-1'
         ECR_REGISTRY = '505342848876.dkr.ecr.us-east-1.amazonaws.com'
@@ -106,47 +105,6 @@ pipeline {
                         docker login --username AWS --password-stdin "$ECR_REGISTRY"
                     docker push "$IMAGE:$IMAGE_TAG"
                 '''
-            }
-        }
-
-        stage('Update GitOps image') {
-            steps {
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'github-rke2-gitops',
-                    keyFileVariable: 'GITOPS_KEY'
-                )]) {
-                    sh '''#!/bin/bash
-                        set -euo pipefail
-                        set +x
-                        export GIT_SSH_COMMAND='ssh -i "$GITOPS_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes'
-                        work_dir=$(mktemp -d)
-                        trap 'rm -rf "$work_dir"' EXIT
-                        git clone --depth 1 --branch main "$GITOPS_REPO" "$work_dir/repo"
-                        cd "$work_dir/repo"
-
-                        # This PoC has exactly one container image in its Deployment.
-                        awk -v image="$IMAGE:$IMAGE_TAG" '
-                            $1 == "image:" {
-                                sub(/image:.*/, "image: " image)
-                                count++
-                            }
-                            { print }
-                            END { if (count != 1) exit 1 }
-                        ' k8s/deployment.yaml > "$work_dir/deployment.yaml"
-                        mv "$work_dir/deployment.yaml" k8s/deployment.yaml
-                        git diff --check
-
-                        if git diff --quiet -- k8s/deployment.yaml; then
-                            echo 'GitOps already references this image; nothing to push.'
-                            exit 0
-                        fi
-                        git config user.name 'Jenkins CI'
-                        git config user.email 'jenkins@localhost'
-                        git add k8s/deployment.yaml
-                        git commit -m "Update rke2-project image to $IMAGE_TAG"
-                        git push origin HEAD:main
-                    '''
-                }
             }
         }
     }
