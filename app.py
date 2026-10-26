@@ -16,7 +16,7 @@ def home():
         application=APP_NAME,
         version=APP_VERSION,
         hostname=HOSTNAME,
-        message="Hello from publics-3",
+        message="Hello from publics-4",
     )
 
 
